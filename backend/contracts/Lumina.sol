@@ -9,7 +9,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 contract Lumina is Ownable {
 
     // @notice IERC20 Lumina token contract reference
-    IERC20 lumi;
+    IERC20 public immutable lumi;
     // @notice LUMI to USD rate
     uint256 lumiToUsd;
     // @notice Chainlink V3 interface aggregator
@@ -82,6 +82,7 @@ contract Lumina is Ownable {
         string domain;
         string title;
         address[] contributors;
+        uint256 budget;
         bool isValidated;
         bool isPublished;
     }
@@ -111,6 +112,8 @@ contract Lumina is Ownable {
      */
     Research [] researches;
 
+    Research[] publishedResearches;
+
 
 /*****************************************************************
  * Constructor
@@ -130,6 +133,10 @@ contract Lumina is Ownable {
         dataFeed = AggregatorV3Interface(
             _dataFeedAddress
         );
+    }
+
+    function getUserBalance(address _address) external view returns (uint256) {
+        return lumi.balanceOf(_address);
     }
 
 /*****************************************************************
@@ -187,8 +194,6 @@ contract Lumina is Ownable {
      */
     function swap () public payable {
         require (msg.value > 0, "You can't swap 0 ETH");
-        require (_msgSender().balance >= msg.value, "ETH Blance too low");
-       // require (_msgSender() != address(0), "You can't swap from address(0)");
 
         bool locked;
         require(!locked, "Reentrancy guard: locked");
@@ -196,6 +201,7 @@ contract Lumina is Ownable {
 
         uint256 _amountLumi = convertETHToLumi(msg.value);
         _transferLumi(_msgSender(),_amountLumi, msg.value);
+        
 
         locked = false;
     }
@@ -261,13 +267,16 @@ contract Lumina is Ownable {
         require (lumi.balanceOf(_msgSender()) >= _amount, "You can't stake more LUMI than you have");
         require(!stakingData[_msgSender()].isStaking, "You are already staking");
 
+        // Transfer LUMI tokens to the contract
+        //lumi.approve(address(this), _amount);
+        lumi.transferFrom(_msgSender(), address(this), _amount);
+
         stakingData[_msgSender()].timestamp = block.timestamp;
         stakingData[_msgSender()].amountLumi += _amount;
         stakingData[_msgSender()].amountEth += msg.value;
         stakingData[_msgSender()].ethPrice = getLatestPrice();
         stakingData[_msgSender()].isStaking = true;
-
-        lumi.transferFrom(_msgSender(), address(this), _amount);
+        
     }
 
     /**
@@ -304,7 +313,7 @@ contract Lumina is Ownable {
         uint256 _stakingDuration = block.timestamp - stakingData[_msgSender()].timestamp;
         uint256 _stakedAmount = stakingData[_msgSender()].amountLumi + stakingData[_msgSender()].amountEth * uint256(stakingData[_msgSender()].ethPrice);
         uint256 numerator = 15; // APR 1.5%  (numerator)
-        uint256 denominator = 100; // APR 1.5% (denominator)
+        uint256 denominator = 1000; // APR 1.5% (denominator)
         uint256 _rewardRatePerYear = _stakedAmount * numerator / denominator;
         uint256 _rewardRatePerSecond = _rewardRatePerYear / 3.154e7; // 3.154e7 is the number of seconds in a year (365 days * 24 hours * 60 minutes * 60 seconds)
         uint256 _rewardAmount = _stakingDuration * _rewardRatePerSecond;
@@ -331,12 +340,12 @@ contract Lumina is Ownable {
  * Read article, contributors, Researches, etc.
 *****************************************************************/
 
-    /**
-     * @notice Get the LUMI contract balance
-     * @return uint256 amount of LUMI tokens in the contract
-     */
-    function getContractBalance() external view returns (uint256) {
-        return lumi.balanceOf(address(this));
+    function getResearches() external view returns (Research[] memory) {
+        return researches;
+    }
+
+    function getPublishedResearches() external view returns (Research[] memory) {
+        return publishedResearches;
     }
 
     /**
@@ -356,6 +365,16 @@ contract Lumina is Ownable {
      */
     function assignContributor(address _address, uint256 _researchId) external onlyOwner {
         contributors[_address].contributions.push(_researchId);
+    }
+
+    function addResearch(string calldata _domain, string calldata _title, uint256 _budget) external {
+        require(lumi.balanceOf(msg.sender) >= 100, "You need at least 100 LUMI to add a research");
+        require(_budget >= 100, "Budget must be greater than 100 LUMI");
+
+        lumi.approve(address(this), _budget);
+        lumi.transferFrom(msg.sender, address(this), _budget);
+        lumi.approve(address(this), 0);
+        researches.push(Research(researches.length, msg.sender, _domain, _title, new address[](0), _budget, false, false));
     }
 
     /**
@@ -407,5 +426,5 @@ contract Lumina is Ownable {
     }
 
     // @notice Fallback function. Will revert if called
-    fallback() external payable {revert();}
+    fallback() external payable {}
 }

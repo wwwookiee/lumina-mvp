@@ -18,32 +18,37 @@ const { expect } = require('chai');
  *      The contracts were developed using TDD (Test Driven Development) approach.
  */
 
-
 // Global context for the tests
 context("Test Lumi.sol contracts & contracts using the Lumina Token", function () {
 
     const   totalSupply = "115792089237316195423570985008687907853269984665640564039457584007913129639935",
-            lumiToUsd = "1",
-            ethPrice = "2000";
+    lumiToUsd = "1",
+    ethPrice = "2000",
+    amountLumi = ethers.parseEther("50"),
+    amountEth = ethers.parseEther("1");
 
     let balance;
 
     beforeEach(async function() {
         // Get signers accounts
-        [owner, addr1, addr2] = await ethers.getSigners();
-
+        [owner, addr1, addr2, addr3] = await ethers.getSigners();
+    
         // Deploy contract Lumi.sol
         let lumiContract = await ethers.getContractFactory("LuminaToken");
         lumi = await lumiContract.deploy();
-
+    
         let mockContract = await ethers.getContractFactory("MockV3Aggregator");
         mock = await mockContract.deploy();
-
+    
         let luminaContract = await ethers.getContractFactory("Lumina");
         lumina = await luminaContract.deploy(lumi.target, mock.target);
+    
+        // Transfer all lumi from owner to the LumiSwap contract
+        await lumi.transfer(lumina.target, BigInt(totalSupply));
     });
 
-    context ("Global tests on Lumi.sol", function () {
+
+    context ("Test on token", function () {
 
         it("Should return the correct name and symbol", async function () {
             expect(await lumi.name()).to.equal("Lumina");
@@ -55,22 +60,13 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
         });
 
         it("Should return the correct balance of the owner", async function () {
-            expect(await lumi.balanceOf(owner.address)).to.be.equal(BigInt(totalSupply));
+            expect(await lumi.balanceOf(owner.address)).to.be.equal(0);
         });
     });
 
     describe("Test swap part (swap ETH to LUMI)", function () {
 
-        beforeEach(async function() {
-            // Deploy contract LumiSwapp.sol
-            // let luminaContract = await ethers.getContractFactory("LumiSwap");
-            // lumina = await luminaContract.deploy(lumi.target, mock.target);
-
-            // // Transfer all lumi from owner to the LumiSwap contract
-            // await lumi.transfer(lumina.target, BigInt(totalSupply));
-        });
-
-        context("Global tests", function () {
+        context("Check balances", function () {
 
             it("Should return the correct LUMI balance of the LumiSwap contract", async function () {
                 expect(await lumi.balanceOf(lumina.target)).to.be.equal(BigInt(totalSupply));
@@ -79,22 +75,24 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
             it("Should return the correct owner balance of the LumiSwap contract", async function () {
                 expect(await lumi.balanceOf(owner.address)).to.be.equal(0);
             });
-
         });
 
         describe("Test getContractBalances function (at init)", function () {
+
             it("Should return the correct balance (LUMI and ETH) of the LumiSwap contract ", async function () {
                 expect(await lumina.getContractBalances()).to.deep.equal([BigInt("0"),BigInt(totalSupply)]);
             });
         });
 
         describe("Test getLatestPrice() function ", function () {
+
             it("Should return the correct ETH rate in USD", async function () {
                 expect(await lumina.getLatestPrice()).to.be.equal(ethPrice);
             });
         });
 
         describe("Test convertEthToLumi() function ", function () {
+
             it("should revert if the amount of ETH is 0", async function () {
                 await expect(lumina.convertETHToLumi(0)).to.be.revertedWith("You can only convert more than 0 ETH");
             });
@@ -116,24 +114,16 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
             it("Should revert if the amount of ETH is 0", async function () {
                 await expect(lumina.swap({ value: 0 })).to.be.revertedWith("You can't swap 0 ETH");
             });
-            // it("Should revert if the sender ETH balance is too low", async function () {
-            //     await expect(lumina.connect(addr2).swap()).to.be.revertedWith("ETH Blance too low");
-            // });
-            // it("Should revert if msg.sender is address(0)", async function () {
-            //     await expect(lumina.connect(address(0)).swap()).to.be.revertedWith("You can't swap from address(0)");
-            // });
-
-
 
             it("Shouldn't revert if contract isn't locked", async function () {
                 await expect(lumina.swap({ value: ethers.parseEther("1") })).to.not.be.revertedWith("Contract is locked");
             });
+
             it("Should transfer to the sender the correct amount of LUMI", async function () {
                 const amountEth = ethers.parseEther("1");
                 const amountLumi = await lumina.convertETHToLumi(amountEth);
                 await lumina.swap({ value: amountEth });
                 expect(await lumi.balanceOf(owner.address)).to.be.equal(amountLumi);
-
             });
 
             it("Should swap ETH for LUMI", async function () {
@@ -148,7 +138,7 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
             it("Should emit the lumina event", async function () {
                 const amountEth = ethers.parseEther("1");
                 await expect(lumina.swap({ value: amountEth }))
-                .to.emit(lumina, "Swapped")
+                .to.emit(lumina, "Swap")
                 .withArgs(owner.address, amountEth, await lumina.convertETHToLumi(amountEth));
             });
         });
@@ -220,23 +210,26 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
 
         describe("Test the getStakingBalance function", function () {
             it("Should return the correct lumina balance of an address", async function () {
-                const _amountLumi = ethers.parseEther("50");
-                const _amountEth = ethers.parseEther("1");
-                await lumina.stake(_amountLumi, { value : _amountEth });
+                await lumina.swap({ value: amountEth });
+                await lumi.approve(lumina.target, amountLumi);
+                await lumina.stake(amountLumi, { value : amountEth });
                 const luminaData = await lumina.getStakingData(owner.address);
-                expect(luminaData.amountEth).to.be.equal(_amountEth);
-                expect(luminaData.amountLumi).to.be.equal(_amountLumi);
+                expect(luminaData.amountEth).to.be.equal(amountEth);
+                expect(luminaData.amountLumi).to.be.equal(amountLumi);
             });
+            
         });
 
         describe("Test the stake function", function () {
 
-            beforeEach(async function() {
-                instancedStaking = lumina.connect(addr1);
-                instancedLumiSwap = lumina.connect(addr1);
-            });
 
-            context("No lumina seeded for the sender", function () {
+
+            context("No lumina seeded", function () {
+
+                beforeEach(async function() {
+                    lumina = await lumina.connect(addr2);
+                });
+
                 it("Should revert if the _amount (LUMI) is 0", async function () {
                     await expect(lumina.stake(0, { value: ethers.parseEther("1") })).to.be.revertedWith("You can only stake more than 0 LUMI");
                 });
@@ -246,20 +239,24 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
                 });
 
                 it("Should revert if the amount of LUMI is higher than the balance of the sender", async function () {
-                    await expect(instancedStaking.stake(ethers.parseEther("1"), {value : ethers.parseEther("1")}) ).to.be.revertedWith("You can't stake more LUMI than you have");
+                    await expect(lumina.stake(ethers.parseEther("1"), {value : ethers.parseEther("1")}) ).to.be.revertedWith("You can't stake more LUMI than you have");
                 });
             });
 
-            context ("Staking seeded for the owner", function () {
+            context ("Staking seeded", function () {
                 beforeEach(async function() {
-                    await lumina.stake(ethers.parseEther("500"), { value: ethers.parseEther("0.5") });
-                    amountLumi = ethers.parseEther("500");
-                    amountEth = ethers.parseEther("0.5");
+                    lumina = await lumina.connect(addr3);
+                    await lumi.approve(lumina.target, ethers.parseEther("25"));
+                    //await lumi.allowance(addr1.address, lumina.target);
+                    await lumina.swap({ value: ethers.parseEther("1") });
+                    await lumi.approve(lumina.target, ethers.parseEther("25"));
+                    await lumina.stake(ethers.parseEther("25"), { value : ethers.parseEther("1") });
+
+
                 });
 
-                it("Should revert if the sender is already lumina", async function () {
-
-                    await expect(lumina.stake(amountLumi, { value: amountEth })).to.be.revertedWith("You are already lumina");
+                it("Should revert if the sender is already staking", async function () {
+                    await expect(lumina.stake(ethers.parseEther("25"), { value: ethers.parseEther("1") })).to.be.revertedWith("You are already staking");
                 });
 
                 it("Should transfer ETH and LUMI from the sender to the contract", async function () {
@@ -269,7 +266,6 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
                 });
 
                 it("Should save the block timestamp in luminaData", async function () {
-                     // Stake 500 LUMI and 1 ETH
                     const blockNumber = await ethers.provider.getBlockNumber();  // Get the latest block number
                     const block = await ethers.provider.getBlock(blockNumber); // Get the latest block information
                     const timestamp = block.timestamp;
@@ -308,11 +304,11 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
 
             context("No lumina seeded", function () {
                 it("Should revert if the sender isn't lumina", async function () {
-                    await expect(lumina.unstake()).to.be.revertedWith("You are not lumina");
+                    await expect(lumina.unstake()).to.be.revertedWith("You are not staking");
                 });
 
                 it("should transfer ETH to the sender", async function (){
-                    await lumina.stake(ethers.parseEther("500"), { value: ethers.parseEther("0.5") });
+                    await lumina.stake(amountLumi, { value: amountEth });
                     const balanceBefore = await ethers.provider.getBalance(owner.address);
                     await lumina.unstake();
                     const balanceAfter = await ethers.provider.getBalance(owner.address);

@@ -1,4 +1,4 @@
-import React from 'react'
+"use client"
 import { Flex, Text } from '@chakra-ui/react'
 
 const Footer = () => {
@@ -7,8 +7,9 @@ const Footer = () => {
         justifyContent="center"
         alignItems="center"
         p="2rem"
+        h="100vh"
     >
-        <Text>All rights reserved &copy; Alyra {new Date().getFullYear()}</Text>
+        <Text>All rights reserved &copy; Lumina {new Date().getFullYear()}</Text>
     </Flex>
 
   )

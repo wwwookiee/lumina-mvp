@@ -46,14 +46,12 @@ async function main() {
   const contractBalance = await lumi.balanceOf(lumina.target);
   console.log("LumiSwap contract balance (LUMI) : ", contractBalance.toString());
 
-  console.log(owner.address);
-
   console.log("--------------------------------------------------------------------------");
   console.log("Transfering minted LUMI to Lumina contract");
   // Transfer all lumi from owner to the LumiSwap contract
-  await lumi.approve(lumina.target, balance);
-  await lumi.allowance(owner.address, lumina.target);
   await lumi.transfer(lumina.target, balance);
+
+  //await lumi.approve(lumina.target, balance);
   console.log("--------------------------------------------------------------------------");
 
     // Get the  LUMI balances of the owner after transfer
@@ -61,7 +59,7 @@ async function main() {
     console.log("Owner balance (LUMI) : ", newBalance.toString());
 
     const newContractBalance = await lumi.balanceOf(lumina.target);
-    console.log("LumiSwap contract balance (LUMI) : ", newContractBalance.toString());
+    console.log("Lumina contract balance (LUMI) : ", newContractBalance.toString());
 
     console.log("--------------------------------------------------------------------------");
 
