@@ -265,7 +265,7 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
                     expect(luminaData.amountLumi).to.be.equal(amountLumi);
                 });
 
-                it("Should save the block timestamp in luminaData", async function () {
+                it("Should save the block timestamp in stakingData", async function () {
                     const blockNumber = await ethers.provider.getBlockNumber();  // Get the latest block number
                     const block = await ethers.provider.getBlock(blockNumber); // Get the latest block information
                     const timestamp = block.timestamp;

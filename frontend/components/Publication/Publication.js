@@ -19,11 +19,13 @@ import LumiBalance from '@/components/LumiBalance/LumiBalance'
 
 //contract
 import Contract from '../../../backend/artifacts/contracts/Lumina.sol/Lumina.json'
+import Token from '../../../backend/artifacts/contracts/LuminaToken.sol/LuminaToken.json'
 
 const Publication = () => {
 
   // Contract Address
   const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_LUMINA
+  const tokenAddress = process.env.NEXT_PUBLIC_CONTRACT_LUMITOKEN
 
   // Wallet informations
   const { isConnected, address } = useAccount()
@@ -36,8 +38,60 @@ const Publication = () => {
   const [title, setTitle] = useState('')
   const [domain, setDomain] = useState('')
   const [budget, setBudget] = useState(0)
+  const [balance, setBalance] = useState(0)
+  const [allowance, setAllowance] = useState(0)
+
+  const getAllowance = async() => {
+    try {
+        const data = await readContract({
+          address: contractToken,
+          abi: Token.abi,
+          functionName: 'allowance',
+          account: address,
+          args : [address]
+        });
+        setAllowance(ethers.formatEther(data).toString())
+      }
+      catch(err) {
+        console.log(err)
+      }
+    }
+
+
+  const approve = async() => {
+    try {
+      const { request } = await prepareWriteContract({
+        address: tokenAddress,
+        abi: Token.abi,
+        functionName: 'approve',
+        account: address,
+        args : [contractAddress, ethers.parseEther(budget)]
+      });
+      await writeContract(request)
+    }
+    catch(err) {
+      console.log(err)
+    }
+  }
+
+  const getUserBalance = async() => {
+    try {
+      const data = await readContract({
+        address: contractAddress,
+        abi: Contract.abi,
+        functionName: 'getUserBalance',
+        account: address,
+        args : [address]
+      });
+      setBalance(ethers.formatEther(data).toString())
+    }
+    catch(err) {
+      console.log(err)
+    }
+  }
 
   const addResearch = async() => {
+    budget < allowance ? (await approve()) : null
     try {
       const { request } = await prepareWriteContract({
         address: contractAddress,
@@ -70,6 +124,8 @@ const Publication = () => {
 
   useEffect(() => {
     if(isConnected){
+        getUserBalance()
+        getAllowance()
     }
   }, [isConnected, address])
 
@@ -77,6 +133,7 @@ const Publication = () => {
     <>
       { isConnected ? (
         <>
+          <LumiBalance balance={ balance } />
           <Flex direction="column" margin="0 auto" width="600px">
             <Heading as="h3" size="lg">Publish a research</Heading>
             <Flex  direction="column" mt="1rem">

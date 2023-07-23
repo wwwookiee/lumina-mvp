@@ -83,7 +83,6 @@ contract Lumina is Ownable {
         string title;
         address[] contributors;
         uint256 budget;
-        bool isValidated;
         bool isPublished;
     }
 
@@ -344,8 +343,20 @@ contract Lumina is Ownable {
         return researches;
     }
 
+    function getResearchesToReview() external view returns (Research[] memory) {
+        return researches;
+    }
+
     function getPublishedResearches() external view returns (Research[] memory) {
         return publishedResearches;
+    }
+
+    function validateResearch(uint256 id) external {
+        require(contributors[msg.sender].isContributor == true, "You are not a contributor");
+        require(researches[id].isPublished == false, "This research is already published");
+
+        researches[id].isPublished = true;
+        publishedResearches.push(researches[id]);
     }
 
     /**
@@ -353,7 +364,10 @@ contract Lumina is Ownable {
      * @param _domain  domain of expertise of the contributor
      * @param _references link to the contributor's CV, LinkedIn, etc.
      */
-    function contributorApplication(string calldata _domain, string calldata _references) external {
+    function contributorApplication(string memory _domain, string memory _references) external {
+    require(bytes(_domain).length > 0, "You must provide a domain of expertise");
+    require(bytes(_references).length > 0, "You must provide references");
+        require(!contributors[msg.sender].isContributor, "You are already a contributor");
         contributors[msg.sender].domain = _domain;
         contributors[msg.sender].references = _references;
     }
@@ -367,14 +381,14 @@ contract Lumina is Ownable {
         contributors[_address].contributions.push(_researchId);
     }
 
-    function addResearch(string calldata _domain, string calldata _title, uint256 _budget) external {
+    function addResearch(string calldata _domain, string memory _title, uint256 _budget) external {
         require(lumi.balanceOf(msg.sender) >= 100, "You need at least 100 LUMI to add a research");
         require(_budget >= 100, "Budget must be greater than 100 LUMI");
 
         lumi.approve(address(this), _budget);
         lumi.transferFrom(msg.sender, address(this), _budget);
         lumi.approve(address(this), 0);
-        researches.push(Research(researches.length, msg.sender, _domain, _title, new address[](0), _budget, false, false));
+        researches.push(Research(researches.length, msg.sender, _domain, _title, new address[](0), _budget, false));
     }
 
     /**
@@ -382,21 +396,12 @@ contract Lumina is Ownable {
      * @param _researchId ID of the research to validate
      */
     function readResearch(uint256 _researchId) external {
-        require(lumi.balanceOf(msg.sender) >= 25, "You need at least 25 LUMI to read a research");
+        address sender = _msgSender();
+        require(lumi.balanceOf(sender) >= 25, "You need at least 25 LUMI to read a research");
         require(researches[_researchId].isPublished == true, "This research is not published yet");
-
-        Research storage research = researches[_researchId];
-        address sender = msg.sender;
-        uint256 length = research.contributors.length;
-
-        // Loop through contributors and transfer tokens
-        for (uint256 i = length; i > 0; --i) {
-            address contributor = research.contributors[i - 1];
-            lumi.transferFrom(sender, contributor, 25);
-        }
-
         lumi.transferFrom(sender, address(this), 25);
-        lumi.transferFrom(sender, research.depositor, 25);
+        lumi.transferFrom(sender, researches[_researchId].depositor, 25);
+        readingPermissions[sender].push(_researchId);
     }
 /*****************************************************************
  * modifiers

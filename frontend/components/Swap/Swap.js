@@ -90,7 +90,7 @@ const Swap = () => {
         duration: 3000,
         isClosable: true,
       })
-      
+
     }
     catch(err) {
       console.log(err)
@@ -112,11 +112,12 @@ const Swap = () => {
   }, [isConnected])
 
   return (
-    <Layout>
+    <>
       { isConnected ? (
         <>
           <LumiBalance balance={balance}/>
           <Flex direction="column" margin="0 auto" width="600px">
+
             <Heading as="h3" size="lg">Enter the amount of ethers to swapp</Heading>
             <Flex  mt="1rem">
               <Input mr="0.5rem" placeholder="amount of ethers" onChange={e => setAmountEth(e.target.value)}/>
@@ -152,7 +153,7 @@ const Swap = () => {
       ):(
         <NotConnected/>
       )}
-    </Layout>
+    </>
   )
 }
 

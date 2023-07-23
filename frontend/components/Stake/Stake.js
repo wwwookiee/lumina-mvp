@@ -45,6 +45,23 @@ const Stake = () => {
   const [stakedLumi, setStakedLumi] = useState(0)
   const [isStaking, setIsStaking] = useState(false)
   const [rewards, setRewards] = useState(0)
+  const [allowance, setAllowance] = useState(0)
+
+  const getAllowance = async() => {
+    try {
+        const data = await readContract({
+          address: contractToken,
+          abi: Token.abi,
+          functionName: 'allowance',
+          account: address,
+          args : [address]
+        });
+        setAllowance(ethers.formatEther(data).toString())
+      }
+      catch(err) {
+        console.log(err)
+      }
+    }
 
   const approve = async() => {
     try {
@@ -98,6 +115,7 @@ const Stake = () => {
   }
 
   const stake = async() => {
+    amountLumi < allowance ? (await approve()) : null
     try {
       await approve()
       const { request } = await prepareWriteContract({
@@ -200,6 +218,7 @@ const Stake = () => {
     if(isConnected){
       getUserBalance()
       getStakingData()
+      getAllowance()
     }
   }, [isConnected, address])
 
