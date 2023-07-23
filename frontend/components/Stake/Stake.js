@@ -50,11 +50,11 @@ const Stake = () => {
   const getAllowance = async() => {
     try {
         const data = await readContract({
-          address: contractToken,
+          address: tokenAddress,
           abi: Token.abi,
           functionName: 'allowance',
           account: address,
-          args : [address]
+          args : [address, contractAddress]
         });
         setAllowance(ethers.formatEther(data).toString())
       }
@@ -73,6 +73,7 @@ const Stake = () => {
         args : [contractAddress, ethers.parseEther(amountLumi)]
       });
       await writeContract(request)
+      getAllowance()
     }
     catch(err) {
       console.log(err)
@@ -115,9 +116,8 @@ const Stake = () => {
   }
 
   const stake = async() => {
-    amountLumi < allowance ? (await approve()) : null
+    await (ethers.parseEther(amountLumi) > ethers.parseEther(allowance) ? (approve()) : (null))
     try {
-      await approve()
       const { request } = await prepareWriteContract({
         address: contractAddress,
         abi: Contract.abi,
@@ -129,6 +129,7 @@ const Stake = () => {
       await writeContract(request)
       getStakingData()
       getUserBalance()
+      getAllowance()
       toast({
         title: 'Tokens staked!',
         //description: 'You swapped ' + voterAddress,
@@ -161,6 +162,7 @@ const Stake = () => {
       await writeContract(request)
       getStakingData()
       getUserBalance()
+      getAllowance()
       toast({
         title: 'Tokens unstaked!',
         //description: 'You swapped ' + voterAddress,
@@ -193,6 +195,7 @@ const Stake = () => {
       await writeContract(request)
       getStakingData()
       getUserBalance()
+      getAllowance()
       toast({
         title: 'Reward Tokens claimed!',
         //description: 'You swapped ' + voterAddress,

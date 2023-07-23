@@ -4,10 +4,15 @@
 import { useState, useEffect } from 'react'
 
 //Chakra UI
-import {Heading, Flex, useToast, Input, Button, Label, Card, CardHeader, CardBody, Stack, StackDivider, Box, Text, Tr} from '@chakra-ui/react'
+import {
+  Heading, Flex, useToast, Input, Button, Text, Tag, TagLabel,  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, useDisclosure
+} from '@chakra-ui/react'
 
 // Ethers
 import { ethers } from 'ethers'
+
+//Unique id generator
+import { v4 as uuidv4 } from 'uuid';
 
 // WAGMI
 import { readContract, prepareWriteContract, writeContract } from '@wagmi/core'
@@ -31,12 +36,16 @@ const Contribute = () => {
   // `toast` init
   const toast = useToast()
 
+  // Chakra UI modal
+  const { isOpen, onOpen, onClose } = useDisclosure()
+
   // UseStates
   const [domain, setDomain] = useState('')
   const [references, setReferences] = useState('')
-
-
-
+  const [researches, setResearches] = useState([])
+  const [title, setTitle] = useState('')
+  const [researchDomain, setResearchDomain] = useState('')
+  const [researchId, setResearchId] = useState(null)
 
   const contributorApplication = async() => {
     try {
@@ -69,8 +78,111 @@ const Contribute = () => {
     }
   }
 
+
+  const validateResearch = async(_id) => {
+    try {
+      const { request } = await prepareWriteContract({
+        address: contractAddress,
+        abi: Contract.abi,
+        functionName: 'validateResearch',
+        account: address,
+        args : [_id]
+      });
+      await writeContract(request)
+      getResearches()
+      toast({
+        title: 'Success!',
+        description: 'Research validated & published',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+
+    }
+    catch(err) {
+      console.log(err)
+      toast({
+        title: 'Error!',
+        description: err.details || 'An error occured.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  const rejectResearch = async(_id) => {
+    try {
+      const { request } = await prepareWriteContract({
+        address: contractAddress,
+        abi: Contract.abi,
+        functionName: 'rejectResearch',
+        account: address,
+        args : [_id]
+      });
+      await writeContract(request)
+      getResearches()
+      toast({
+        title: 'Oh! ',
+        description: 'Research rejected',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+
+    }
+    catch(err) {
+      console.log(err)
+      toast({
+        title: 'Error!',
+        description: err.details || 'An error occured.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  const getResearches = async() => {
+    try {
+      const data = await readContract({
+        address: contractAddress,
+        abi: Contract.abi,
+        functionName: 'getResearches',
+        account: address
+      });
+
+      setResearches(data.map(
+        event => ({
+          id : event.id,
+          title: event.title,
+          domain: event.domain,
+          budget: event.budget,
+          contributor: event.contributor,
+          isPublished: event.isPublished,
+          isRejected: event.isRejected
+        })
+      ))
+      console.log(researches)
+    }
+    catch(err) {
+      console.log(err)
+    }
+  }
+
+  const modalhandler = async (id) => {
+    
+    setResearchId(id)
+    setResearchDomain(researches[id].domain)
+    setTitle(researches[id].title)
+    onOpen()
+
+  }
+  
+
   useEffect(() => {
     if(isConnected){
+      getResearches()
     }
   }, [isConnected, address])
 
@@ -95,11 +207,37 @@ const Contribute = () => {
           <Flex direction="column" margin="0 auto" width="600px">
             <Heading as="h3" size="lg">Reviewing</Heading>
             <Text mt="1rem">Peer review assigned to you</Text>
+            { console.log(researches) }
             <Flex  mt="1rem" justifyContent="flex-center">
-              <Text>Research Name</Text>
-              <Button ml="0.5rem" size="xs" colorScheme='whatsapp' onClick={() => stake()}>Validate</Button>
+              {
+                researches.map((item) => {
+                  if(item.contributor == address.toString() && item.isPublished == false && item.isRejected == false){
+                    return  <Flex key={uuidv4()}><Text>{item.title + " - " + item.domain }</Text>
+                              <Button ml="0.5rem" size="xs" onClick={() => modalhandler(item.id)}>Read</Button>
+                              <Button ml="0.5rem" size="xs" colorScheme='whatsapp' onClick={() => validateResearch(item.id)}>Validate</Button>
+                              <Button ml="0.5rem" size="xs" colorScheme='red' onClick={() => rejectResearch(item.id)}>Reject</Button>
+                            </Flex>
+                  }
+                })
+              }
             </Flex>
           </Flex>
+          <Modal onClose={onClose} size="full" isOpen={isOpen}>
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader p="5rem 5rem 2rem">{title}</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody p="0 5rem">
+                <Tag size="md"  variant='outline' colorScheme='blue'>
+                  <TagLabel>{researchDomain}</TagLabel>
+                </Tag>
+                <Text mt="2rem">Le Lorem Ipsum est simplement du faux texte employé dans la composition et la mise en page avant impression. Le Lorem Ipsum est le faux texte standard de l'imprimerie depuis les années 1500, quand un imprimeur anonyme assembla ensemble des morceaux de texte pour réaliser un livre spécimen de polices de texte. Il n'a pas fait que survivre cinq siècles, mais s'est aussi adapté à la bureautique informatique, sans que son contenu n'en soit modifié. Il a été popularisé dans les années 1960 grâce à la vente de feuilles Letraset contenant des passages du Lorem Ipsum, et, plus récemment, par son inclusion dans des applications de mise en page de texte, comme Aldus PageMaker.</Text>
+              </ModalBody>
+              <ModalFooter>
+                <Button onClick={onClose}>Close</Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         </>
       ):(
         <NotConnected/>

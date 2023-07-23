@@ -29,6 +29,7 @@ contract Lumina is Ownable {
     event Stake(address indexed _from, uint256 _amountLumi, uint256 _amountEth);
     event UnStake(address indexed _from, uint256 _amountLumi, uint256 _amountEth);
     event ClaimRewards(address indexed _from, uint256 _amountLumi);
+    event contributorHasApply(address indexed _from, string _domain, string _references);
 
 /*****************************************************************
  * Structs
@@ -81,9 +82,10 @@ contract Lumina is Ownable {
         address depositor;
         string domain;
         string title;
-        address[] contributors;
+        address contributor;
         uint256 budget;
         bool isPublished;
+        bool isRejected;
     }
 
 /*****************************************************************
@@ -267,7 +269,6 @@ contract Lumina is Ownable {
         require(!stakingData[_msgSender()].isStaking, "You are already staking");
 
         // Transfer LUMI tokens to the contract
-        //lumi.approve(address(this), _amount);
         lumi.transferFrom(_msgSender(), address(this), _amount);
 
         stakingData[_msgSender()].timestamp = block.timestamp;
@@ -275,7 +276,7 @@ contract Lumina is Ownable {
         stakingData[_msgSender()].amountEth += msg.value;
         stakingData[_msgSender()].ethPrice = getLatestPrice();
         stakingData[_msgSender()].isStaking = true;
-        
+
     }
 
     /**
@@ -312,7 +313,7 @@ contract Lumina is Ownable {
         uint256 _stakingDuration = block.timestamp - stakingData[_msgSender()].timestamp;
         uint256 _stakedAmount = stakingData[_msgSender()].amountLumi + stakingData[_msgSender()].amountEth * uint256(stakingData[_msgSender()].ethPrice);
         uint256 numerator = 15; // APR 1.5%  (numerator)
-        uint256 denominator = 1000; // APR 1.5% (denominator)
+        uint256 denominator = 100; // APR 1.5% (denominator)
         uint256 _rewardRatePerYear = _stakedAmount * numerator / denominator;
         uint256 _rewardRatePerSecond = _rewardRatePerYear / 3.154e7; // 3.154e7 is the number of seconds in a year (365 days * 24 hours * 60 minutes * 60 seconds)
         uint256 _rewardAmount = _stakingDuration * _rewardRatePerSecond;
@@ -343,21 +344,15 @@ contract Lumina is Ownable {
         return researches;
     }
 
-    function getResearchesToReview() external view returns (Research[] memory) {
-        return researches;
-    }
-
     function getPublishedResearches() external view returns (Research[] memory) {
         return publishedResearches;
     }
 
-    function validateResearch(uint256 id) external {
-        require(contributors[msg.sender].isContributor == true, "You are not a contributor");
-        require(researches[id].isPublished == false, "This research is already published");
-
-        researches[id].isPublished = true;
-        publishedResearches.push(researches[id]);
+    function getReadingPermissions() external view returns (uint256[] memory) {
+        return readingPermissions[_msgSender()];
     }
+
+
 
     /**
      * @notice contributor application function
@@ -365,11 +360,17 @@ contract Lumina is Ownable {
      * @param _references link to the contributor's CV, LinkedIn, etc.
      */
     function contributorApplication(string memory _domain, string memory _references) external {
-    require(bytes(_domain).length > 0, "You must provide a domain of expertise");
-    require(bytes(_references).length > 0, "You must provide references");
-        require(!contributors[msg.sender].isContributor, "You are already a contributor");
-        contributors[msg.sender].domain = _domain;
-        contributors[msg.sender].references = _references;
+        address _sender = _msgSender();
+        
+        require(bytes(_domain).length > 0, "You must provide a domain of expertise");
+        require(bytes(_references).length > 0, "You must provide references");
+        require( contributors[_sender].isContributor == false, "You are already a contributor");
+        
+        contributors[_sender].domain = _domain;
+        contributors[_sender].references = _references;
+        contributors[_sender].isContributor = true;
+
+        emit contributorHasApply(_sender, _domain, _references);
     }
 
     /**
@@ -377,30 +378,45 @@ contract Lumina is Ownable {
      * @param _address address of the contributor to assign
      * @param _researchId ID of the research to assign the contributor+
      */
-    function assignContributor(address _address, uint256 _researchId) external onlyOwner {
+    function assignContributor(address _address, uint256 _researchId) external onlyOwner{
+        require(contributors[_address].isContributor == true, "This address is not a contributor");
         contributors[_address].contributions.push(_researchId);
+        readingPermissions[_address].push(_researchId);
+        researches[_researchId].contributor = _address;
     }
 
     function addResearch(string calldata _domain, string memory _title, uint256 _budget) external {
         require(lumi.balanceOf(msg.sender) >= 100, "You need at least 100 LUMI to add a research");
         require(_budget >= 100, "Budget must be greater than 100 LUMI");
-
-        lumi.approve(address(this), _budget);
         lumi.transferFrom(msg.sender, address(this), _budget);
-        lumi.approve(address(this), 0);
-        researches.push(Research(researches.length, msg.sender, _domain, _title, new address[](0), _budget, false));
+        researches.push(Research(researches.length, msg.sender, _domain, _title, address(0), _budget, false, false));
+    }
+
+    function validateResearch(uint256 _researchId) external {
+        require(contributors[msg.sender].isContributor, "You are not a contributor");
+        require(researches[_researchId].isPublished == false, "This research is already published");
+        researches[_researchId].isPublished = true;
+        publishedResearches.push(researches[_researchId]);
+    }
+
+    function rejectResearch(uint256 _researchId) external {
+        require(contributors[msg.sender].isContributor, "You are not a contributor");
+        require(researches[_researchId].isPublished == false, "This research is already published");
+        researches[_researchId].isPublished = false;
     }
 
     /**
      *
      * @param _researchId ID of the research to validate
      */
-    function readResearch(uint256 _researchId) external {
+    function readingResearch(uint256 _researchId) external {
         address sender = _msgSender();
-        require(lumi.balanceOf(sender) >= 25, "You need at least 25 LUMI to read a research");
-        require(researches[_researchId].isPublished == true, "This research is not published yet");
-        lumi.transferFrom(sender, address(this), 25);
-        lumi.transferFrom(sender, researches[_researchId].depositor, 25);
+        require(lumi.balanceOf(sender) >= 30, "You need at least 30 LUMI to read a research");
+        //require(readingPermissions[sender][_researchId] == _researchId, "You already have access to this research");
+        //require(researches[_researchId].isPublished == true, "This research is not published yet");
+        lumi.transferFrom(sender, address(this), 10 * 1 ether);
+        lumi.transferFrom(sender, researches[_researchId].depositor, 10 * 1 ether);
+        //lumi.transferFrom(sender, researches[_researchId].contributor, 10 * 1 ether);
         readingPermissions[sender].push(_researchId);
     }
 /*****************************************************************

@@ -44,11 +44,11 @@ const Publication = () => {
   const getAllowance = async() => {
     try {
         const data = await readContract({
-          address: contractToken,
+          address: tokenAddress,
           abi: Token.abi,
           functionName: 'allowance',
           account: address,
-          args : [address]
+          args : [address, contractAddress]
         });
         setAllowance(ethers.formatEther(data).toString())
       }
@@ -56,7 +56,6 @@ const Publication = () => {
         console.log(err)
       }
     }
-
 
   const approve = async() => {
     try {
@@ -91,16 +90,18 @@ const Publication = () => {
   }
 
   const addResearch = async() => {
-    budget < allowance ? (await approve()) : null
+    await (ethers.parseEther(budget) > ethers.parseEther(allowance) ? (approve()) : (null))
     try {
       const { request } = await prepareWriteContract({
         address: contractAddress,
         abi: Contract.abi,
         functionName: 'addResearch',
         account: address,
-        args : [domain, title, budget]
+        args : [domain, title, ethers.parseEther(budget)]
       });
       await writeContract(request)
+      getUserBalance()
+      getAllowance()
       toast({
         title: 'Success',
         description: 'Research was submitted for review!',

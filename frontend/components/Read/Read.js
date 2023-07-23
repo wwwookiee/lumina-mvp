@@ -57,16 +57,34 @@ const Read = () => {
   // `toast` init
   const toast = useToast()
 
-  // modal
+  // Chakra UI modal
   const { isOpen, onOpen, onClose } = useDisclosure()
 
   // UseStates``
   const [balance, setBalance] = useState(0)
-  const [resize, setResize] = useState('vertical')
   const [title, setTitle] = useState('')
   const [domain, setDomain] = useState('')
-  const [budget, setBudget] = useState(0)
   const [researches, setResearches] = useState([])
+  const [allowance, setAllowance] = useState(0)
+  const [readingPermissions, setReadingPermissions] = useState([])
+  const [readingFees, setReadingFees] = useState("30")
+  const [researchId, setResearchId] = useState(0)
+
+  const getAllowance = async() => {
+    try {
+        const data = await readContract({
+          address: tokenAddress,
+          abi: Token.abi,
+          functionName: 'allowance',
+          account: address,
+          args : [address, contractAddress]
+        });
+        setAllowance(ethers.formatEther(data).toString())
+      }
+      catch(err) {
+        console.log(err)
+      }
+    }
 
   const approve = async() => {
     try {
@@ -75,7 +93,7 @@ const Read = () => {
         abi: Token.abi,
         functionName: 'approve',
         account: address,
-        args : [contractAddress, ethers.parseEther(25)]
+        args : [contractAddress, ethers.parseEther(readingFees)]
       });
       await writeContract(request)
     }
@@ -105,7 +123,7 @@ const Read = () => {
       const data = await readContract({
         address: contractAddress,
         abi: Contract.abi,
-        functionName: 'getResearches',
+        functionName: 'getPublishedResearches',
         account: address
       });
       setResearches(data)
@@ -115,19 +133,51 @@ const Read = () => {
     }
   }
 
-  const addResearch = async() => {
+  const getReadingPermissions = async() => {
+    try {
+      const data = await readContract({
+        address: contractAddress,
+        abi: Contract.abi,
+        functionName: 'getReadingPermissions',
+        account: address
+      });
+      setReadingPermissions(data)
+    }
+    catch(err) {
+      console.log(err)
+    }
+  }
+
+  const modalhandler = async (id) => {
+    
+    setResearchId(id)
+
+    if(readingPermissions.includes(id)){
+      setDomain(researches[id].domain)
+      setTitle(researches[id].title)
+      onOpen()
+    }else{
+      readingResearch()
+    }
+  }
+
+  const readingResearch = async() => {
+    await (ethers.parseEther(readingFees) > ethers.parseEther(allowance) ? (approve()) : (null))
     try {
       const { request } = await prepareWriteContract({
         address: contractAddress,
         abi: Contract.abi,
-        functionName: 'addResearch',
+        functionName: 'readingResearch',
         account: address,
-        args : [domain, title, budget]
+        args : [researchId]
       });
       await writeContract(request)
+      getAllowance()
+      getUserBalance()
+      getReadingPermissions()
       toast({
         title: 'Success',
-        description: 'Research was submitted for review!',
+        description: 'Reding permission granted!',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -146,23 +196,19 @@ const Read = () => {
     }
   }
 
-  const modalhandler = (id) => {
-    setDomain(researches[id].domain)
-    setTitle(researches[id].title)
-    onOpen()
-  }
-
   useEffect(() => {
     if(isConnected){
         getUserBalance()
         getPublishedResearches()
-    }
+        getAllowance()
+        getReadingPermissions()
+      }
   }, [isConnected, address])
 
   return (
     <>
       { isConnected ? (
-        <>  
+        <>
           <LumiBalance balance={balance}/>
           <Flex direction="column" margin="0 auto" width="80%">
             <Heading as="h3" size="lg">Read a research</Heading>
@@ -174,7 +220,7 @@ const Read = () => {
                   <Tr>
                     <Th>Domain</Th>
                     <Th>Title</Th>
-                    <Th>Read cost (25 LUMI)</Th>
+                    <Th>Read cost ({readingFees} LUMI)</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
