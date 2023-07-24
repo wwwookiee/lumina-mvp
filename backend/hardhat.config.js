@@ -3,8 +3,8 @@ require("dotenv").config()
 require("solidity-coverage");
 
 const PK = process.env.PK || ""
-const GOERLI_RPC_URL = process.env.RPC_URL || ""
-const MUMBAI_RPC_URL = process.env.RPC_URL || ""
+const GOERLI_RPC_URL = process.env.GOERLI_RPC_URL || ""
+const MUMBAI_RPC_URL = process.env.MUMBAI_RPC_URL || ""
 
 module.exports = {
   defaultNetwork: "hardhat",

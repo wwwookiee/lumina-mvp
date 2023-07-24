@@ -42,8 +42,8 @@ import NotConnected from '@/components/NotConnected/NotConnected'
 import LumiBalance from '@/components/LumiBalance/LumiBalance'
 
 //contract
-import Contract from '../../../backend/artifacts/contracts/Lumina.sol/Lumina.json'
-import Token from '../../../backend/artifacts/contracts/LuminaToken.sol/LuminaToken.json'
+import Contract from '../../public//Lumina.json'
+import Token from '../../public//LuminaToken.json'
 
 const Read = () => {
 
