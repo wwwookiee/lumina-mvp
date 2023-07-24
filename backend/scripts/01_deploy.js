@@ -14,13 +14,6 @@ async function main() {
     console.log(
       `oracle deployed to ${oracle.target}`
     );
-  } else if (hre.network.name === "goerli" || hre.network.name === "mumbai" ) {
-    //Goereli ETH/USD address : 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43
-    oracle.target = "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43"
-  //} else if (hre.network.name === "polygon" ) {
-
-  } else {
-    console.log("Network not supported");
   }
 
   // Deploy contract Lumi.sol
