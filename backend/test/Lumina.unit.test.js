@@ -198,9 +198,6 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
 
     describe("Test Staking part", function () {
 
-        beforeEach(async function() {
-
-        });
 
         describe("Test the getLatestPrice() function", function () {
             it("Should return the correct ETH rate in USD", async function () {
@@ -217,12 +214,10 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
                 expect(luminaData.amountEth).to.be.equal(amountEth);
                 expect(luminaData.amountLumi).to.be.equal(amountLumi);
             });
-            
+
         });
 
         describe("Test the stake function", function () {
-
-
 
             context("No lumina seeded", function () {
 
@@ -246,13 +241,10 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
             context ("Staking seeded", function () {
                 beforeEach(async function() {
                     lumina = await lumina.connect(addr3);
-                    await lumi.approve(lumina.target, ethers.parseEther("25"));
-                    //await lumi.allowance(addr1.address, lumina.target);
                     await lumina.swap({ value: ethers.parseEther("1") });
-                    await lumi.approve(lumina.target, ethers.parseEther("25"));
+                    await lumi.connect(addr3).approve(lumina.target, ethers.parseEther("2000"));
+                    let allowance = await lumi.allowance(addr3.address, lumina.target);
                     await lumina.stake(ethers.parseEther("25"), { value : ethers.parseEther("1") });
-
-
                 });
 
                 it("Should revert if the sender is already staking", async function () {
@@ -260,41 +252,41 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
                 });
 
                 it("Should transfer ETH and LUMI from the sender to the contract", async function () {
-                    const luminaData = await lumina.getStakingData(owner.address);
-                    expect(luminaData.amountEth).to.be.equal(amountEth);
-                    expect(luminaData.amountLumi).to.be.equal(amountLumi);
+                    const luminaData = await lumina.getStakingData(addr3.address);
+                    expect(luminaData.amountEth).to.be.equal(ethers.parseEther("1"));
+                    expect(luminaData.amountLumi).to.be.equal(ethers.parseEther("25"));
                 });
 
                 it("Should save the block timestamp in stakingData", async function () {
                     const blockNumber = await ethers.provider.getBlockNumber();  // Get the latest block number
                     const block = await ethers.provider.getBlock(blockNumber); // Get the latest block information
                     const timestamp = block.timestamp;
-                    const luminaData = await lumina.getStakingData(owner.address);
+                    const luminaData = await lumina.getStakingData(addr3.address);
                     expect(luminaData.timestamp).to.be.equal(timestamp);
                 });
 
                 it("Should have the right contract's balance for ETH", async function () {
                     const balance = await ethers.provider.getBalance(lumina.target);
-                    expect(balance).to.be.equal(amountEth);
+                    expect(balance).to.be.equal(ethers.parseEther("2"));
                 });
 
                 it("Should store the right amount of ETH", async function () {
-                    const luminaData = await lumina.getStakingData(owner.address);
+                    const luminaData = await lumina.getStakingData(addr3.address);
                     expect(luminaData.amountEth).to.be.equal(amountEth);
                 });
 
                 it("Should store the right amount of LUMI", async function () {
-                    const luminaData = await lumina.getStakingData(owner.address);
-                    expect(luminaData.amountLumi).to.be.equal(amountLumi);
+                    const luminaData = await lumina.getStakingData(addr3.address);
+                    expect(luminaData.amountLumi).to.be.equal(ethers.parseEther("25"));
                 });
 
                 it("Should store the right Price for ETH", async function () {
-                    const luminaData = await lumina.getStakingData(owner.address);
+                    const luminaData = await lumina.getStakingData(addr3.address);
                     expect(luminaData.ethPrice).to.be.equal(ethPrice);
                 });
 
                 it("Should set the isStaking to true", async function () {
-                    const luminaData = await lumina.getStakingData(owner.address);
+                    const luminaData = await lumina.getStakingData(addr3.address);
                     expect(luminaData.isStaking).to.be.true;
                 });
             });
@@ -302,25 +294,31 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
 
         describe("Test the unstake function", function () {
 
+            beforeEach(async function() {
+                await lumina.swap({ value: ethers.parseEther("10") });
+                await lumi.approve(lumina.target, ethers.parseEther("1000"));
+            });
+
             context("No lumina seeded", function () {
-                it("Should revert if the sender isn't lumina", async function () {
+                it("Should revert if the sender isn't staking", async function () {
                     await expect(lumina.unstake()).to.be.revertedWith("You are not staking");
                 });
 
                 it("should transfer ETH to the sender", async function (){
-                    await lumina.stake(amountLumi, { value: amountEth });
+
                     const balanceBefore = await ethers.provider.getBalance(owner.address);
+                    await lumina.stake(amountLumi, { value: ethers.parseEther("10")  });
                     await lumina.unstake();
                     const balanceAfter = await ethers.provider.getBalance(owner.address);
-                    expect(balanceAfter).to.be.above(balanceBefore);
+                    expect(balanceBefore).to.be.closeTo(balanceAfter, ethers.parseEther("0.001"));
                 });
 
                 it("Should transfer LUMI to the sender", async function () {
-                    await lumina.stake(ethers.parseEther("500"), { value: ethers.parseEther("0.5") });
                     const balanceBefore = await lumi.balanceOf(owner.address);
+                    await lumina.stake(ethers.parseEther("500"), { value: ethers.parseEther("0.5") });
                     await lumina.unstake();
                     const balanceAfter = await lumi.balanceOf(owner.address);
-                    expect(balanceAfter).to.be.above(balanceBefore);
+                    expect(balanceAfter).to.be.equal(balanceBefore);
                 });
 
                 it("Should calculate the rewards", async function () {
@@ -356,7 +354,6 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
 
                     //const BlockTime = TimestampDiff / BlockDiff;
 
-                    console.log("reward: ", reward);
                     const balanceAfter = await lumi.balanceOf(owner.address);
 
                     // Assert that the calculated reward is within the acceptable range of the stored reward
@@ -409,6 +406,8 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
 
             context ("has rewards to claim", function () {
                 beforeEach(async function() {
+                    await lumina.swap({ value: ethers.parseEther("10") });
+                    await lumi.approve(lumina.target, ethers.parseEther("1000"));
                     await lumina.stake(ethers.parseEther("500"), { value: ethers.parseEther("0.5") });
                     await ethers.provider.send("evm_increaseTime", [86400]);
                     await ethers.provider.send("evm_mine");
@@ -418,15 +417,168 @@ context("Test Lumi.sol contracts & contracts using the Lumina Token", function (
 
                 it("Should transfer the rewards to the sender", async function () {
                     const balanceBefore = await lumi.balanceOf(owner.address);
-                    const claimRewards = await lumina.claimRewards();
-                    console.log(claimRewards);
+                    await lumina.claimRewards();
                     const balanceAfter = await lumi.balanceOf(owner.address);
-                    expect(balanceAfter).to.be.above(balanceBefore + claimRewards);
+                    expect(balanceAfter).to.be.above(balanceBefore );
                 });
 
 
             });
 
+        });
+
+    });
+
+    describe("Test the publication part", function () {
+
+        describe("Test the addResearch function", function () {
+
+            it("Should revert if the sender balance is lower than 100 LUMI", async function () {
+                await expect(lumina.addResearch("Dimain","Title", ethers.parseEther("100"))).to.be.revertedWith("You need at least 100 LUMI to add a research");
+            });
+
+            it("Should revert if the budget is lower than 100 LUMI", async function () {
+                await lumina.swap({ value: ethers.parseEther("100") });
+                await lumi.approve(lumina.target, ethers.parseEther("1000"));
+                await expect(lumina.addResearch("Dimain","Title", "50")).to.be.revertedWith("The budget must be at least 100 LUMI");
+            });
+
+            it("Should transfer Lumi from sender to the contract", async function () {
+                await lumina.swap({ value: ethers.parseEther("100") });
+                await lumi.approve(lumina.target, ethers.parseEther("1000"));
+                const balanceBefore = await lumi.balanceOf(lumina.target);
+                await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+                const balanceAfter = await lumi.balanceOf(lumina.target);
+                expect(balanceAfter).to.be.equal( balanceBefore + ethers.parseEther("100"));
+            });
+
+            it("Should add a new research", async function () {
+                await lumina.swap({ value: ethers.parseEther("100") });
+                await lumi.approve(lumina.target, ethers.parseEther("1000"));
+                await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+                const research = await lumina.getResearches();
+                expect(research[0].depositor).to.be.equal(owner.address);
+                expect(research[0].domain).to.be.equal("Dimain");
+                expect(research[0].title).to.be.equal("Title");
+                expect(research[0].budget).to.be.equal(ethers.parseEther("100"));
+            });
+
+        });
+    });
+
+    describe ("Test the readingResearch function", function () {
+
+            beforeEach(async function() {
+                await lumina.swap({ value: ethers.parseEther("100") });
+                await lumi.approve(lumina.target, ethers.parseEther("1000"));
+                await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+                await lumina.connect(addr1).contributorApplication("Domain", "Link")
+                await lumina.connect(owner).assignContributor(addr1.address, 0);
+            });
+
+            it("Should transfer the lumi to the contract", async function () {
+                const balanceBefore = await lumi.balanceOf(lumina.target);
+                await lumina.readingResearch(0);
+                const balanceAfter = await lumi.balanceOf(lumina.target);
+                expect(balanceAfter).to.be.equal(balanceBefore + ethers.parseEther("30"));
+            });
+
+            it("Should revert if the sender's balance is lower than 30 LUMI", async function () {
+                instance = await lumina.connect(addr1);
+                await expect(instance.readingResearch(0)).to.be.revertedWith("You need at least 30 LUMI to read a research");
+            });
+
+
+    });
+
+    describe("Test the validateResearch function", function () {
+        it("should revert if the message sender is not a contributor", async function () {
+            await expect(lumina.validateResearch(0)).to.be.revertedWith("You are not a contributor");
+        });
+
+        it("should revert if the research is already published", async function () {
+            await lumina.swap({ value: ethers.parseEther("100") });
+            await lumi.approve(lumina.target, ethers.parseEther("1000"));
+            await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+            await lumina.connect(addr1).contributorApplication("Domain", "Link")
+            await lumina.connect(owner).assignContributor(addr1.address, 0);
+            await lumina.connect(addr1).validateResearch(0);
+            await expect(lumina.connect(addr1).validateResearch(0)).to.be.revertedWith("This research is already published");
+        });
+
+        it("should set the research as published", async function () {
+            await lumina.swap({ value: ethers.parseEther("100") });
+            await lumi.approve(lumina.target, ethers.parseEther("1000"));
+            await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+            await lumina.connect(addr1).contributorApplication("Domain", "Link")
+            await lumina.connect(owner).assignContributor(addr1.address, 0);
+            await lumina.connect(addr1).validateResearch(0);
+            const research = await lumina.getResearches();
+            expect(research[0].isPublished).to.be.true;
+        });
+
+        it("Should add the research to the publishedResearches array", async function () {
+            await lumina.swap({ value: ethers.parseEther("100") });
+            await lumi.approve(lumina.target, ethers.parseEther("1000"));
+            await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+            await lumina.connect(addr1).contributorApplication("Domain", "Link")
+            await lumina.connect(owner).assignContributor(addr1.address, 0);
+            await lumina.connect(addr1).validateResearch(0);
+            const publishedResearches = await lumina.getPublishedResearches();
+            expect(publishedResearches[0].depositor).to.be.equal(owner.address);
+            expect(publishedResearches[0].domain).to.be.equal("Dimain");
+            expect(publishedResearches[0].title).to.be.equal("Title");
+            expect(publishedResearches[0].budget).to.be.equal(ethers.parseEther("100"));
+        });
+    });
+    describe("Test the rejectResearch function", function () {
+        it("should revert if the message sender is not a contributor", async function () {
+            await expect(lumina.rejectResearch(0)).to.be.revertedWith("You are not a contributor");
+        });
+
+        it("should revert if the research is already rejected", async function () {
+            await lumina.swap({ value: ethers.parseEther("100") });
+            await lumi.approve(lumina.target, ethers.parseEther("1000"));
+            await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+            await lumina.connect(addr1).contributorApplication("Domain", "Link")
+            await lumina.connect(owner).assignContributor(addr1.address, 0);
+            await lumina.connect(addr1).rejectResearch(0);
+            await expect(lumina.connect(addr1).rejectResearch(0)).to.be.revertedWith("This research is already rejected");
+        });
+
+        it("should set the research as rejected", async function () {
+            await lumina.swap({ value: ethers.parseEther("100") });
+            await lumi.approve(lumina.target, ethers.parseEther("1000"));
+            await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+            await lumina.connect(addr1).contributorApplication("Domain", "Link")
+            await lumina.connect(owner).assignContributor(addr1.address, 0);
+            await lumina.connect(addr1).rejectResearch(0);
+            const research = await lumina.getResearches();
+            expect(research[0].isRejected).to.be.true;
+        });
+
+
+    });
+
+    describe("Test the getReadingPermissions    function", function () {
+        it("Should return the correct reading permissions", async function () {
+            await lumina.swap({ value: ethers.parseEther("100") });
+            await lumi.approve(lumina.target, ethers.parseEther("1000"));
+            await lumina.addResearch("Dimain","Title", ethers.parseEther("100"));
+            await lumina.connect(addr1).contributorApplication("Domain", "Link")
+            await lumina.connect(owner).assignContributor(addr1.address, 0);
+            await lumina.connect(addr1).validateResearch(0);
+            await lumina.connect(owner).readingResearch(0);
+            const readingPermissions = await lumina.getReadingPermissions();
+            expect(readingPermissions[0]).to.be.equal(0n);
+        });
+    });
+
+    describe("Test the getUserBalance function", function () {
+        it("Should return the correct user balance in LUMI", async function () {
+            await lumina.swap({ value: ethers.parseEther("1") });
+            const userBalance = await lumina.getUserBalance(owner.address);
+            expect(userBalance).to.be.equal(ethers.parseEther("2000"));
         });
     });
 });

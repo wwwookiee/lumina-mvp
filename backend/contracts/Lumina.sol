@@ -388,7 +388,7 @@ contract Lumina is Ownable {
 
     function addResearch(string calldata _domain, string memory _title, uint256 _budget) external {
         require(lumi.balanceOf(msg.sender) >= 100, "You need at least 100 LUMI to add a research");
-        require(_budget >= 100, "Budget must be greater than 100 LUMI");
+        require(_budget >= 100, "The budget must be at least 100 LUMI");
         lumi.transferFrom(msg.sender, address(this), _budget);
         researches.push(Research(researches.length, msg.sender, _domain, _title, address(0), _budget, false, false));
     }
@@ -402,8 +402,8 @@ contract Lumina is Ownable {
 
     function rejectResearch(uint256 _researchId) external {
         require(contributors[msg.sender].isContributor, "You are not a contributor");
-        require(researches[_researchId].isPublished == false, "This research is already published");
-        researches[_researchId].isPublished = false;
+        require(researches[_researchId].isRejected == false, "This research is already rejected");
+        researches[_researchId].isRejected = true;
     }
 
     /**
@@ -413,11 +413,8 @@ contract Lumina is Ownable {
     function readingResearch(uint256 _researchId) external {
         address sender = _msgSender();
         require(lumi.balanceOf(sender) >= 30, "You need at least 30 LUMI to read a research");
-        //require(readingPermissions[sender][_researchId] == _researchId, "You already have access to this research");
-        //require(researches[_researchId].isPublished == true, "This research is not published yet");
-        lumi.transferFrom(sender, address(this), 30 * 1 ether);
-        lumi.transfer(researches[_researchId].depositor, 10 * 1 ether);
-        lumi.transfer(researches[_researchId].contributor, 10 * 1 ether);
+        require(lumi.transferFrom(sender, address(this), 30 * 1 ether), 'Transfer failed');
+
         readingPermissions[sender].push(_researchId);
     }
 /*****************************************************************
