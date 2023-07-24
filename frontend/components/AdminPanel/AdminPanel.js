@@ -24,7 +24,6 @@ import { hardhat, goerli } from 'viem/chains'
 
 //contract
 import Contract from '../../public/Lumina.json'
-impor
 
 
 
