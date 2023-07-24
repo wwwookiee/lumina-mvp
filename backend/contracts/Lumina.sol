@@ -170,10 +170,8 @@ contract Lumina is Ownable {
             /*uint timeStamp*/,
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData();
-        return answer;
+        return answer / 10000;
 
-       /* uint256 _ethPrice = 1800;
-        return _ethPrice;*/
     }
 
     /**
@@ -184,7 +182,7 @@ contract Lumina is Ownable {
      */
     function convertETHToLumi(uint256 _amountETH) public view returns (uint256) {
         require(_amountETH > 0, "You can only convert more than 0 ETH");
-        uint256 _EthInUsd = uint256(getLatestPrice()) / 1 ether;
+        uint256 _EthInUsd = uint256(getLatestPrice());
         uint256 _amountLumi = (_amountETH  * _EthInUsd) / lumiToUsd;
         return _amountLumi;
     }
