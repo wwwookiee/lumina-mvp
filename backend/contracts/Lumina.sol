@@ -415,8 +415,8 @@ contract Lumina is Ownable {
         //require(readingPermissions[sender][_researchId] == _researchId, "You already have access to this research");
         //require(researches[_researchId].isPublished == true, "This research is not published yet");
         lumi.transferFrom(sender, address(this), 30 * 1 ether);
-        lumi.transferFrom(sender, researches[_researchId].depositor, 10 * 1 ether);
-        //lumi.transferFrom(sender, researches[_researchId].contributor, 10 * 1 ether);
+        lumi.transfer(researches[_researchId].depositor, 10 * 1 ether);
+        lumi.transfer(researches[_researchId].contributor, 10 * 1 ether);
         readingPermissions[sender].push(_researchId);
     }
 /*****************************************************************
