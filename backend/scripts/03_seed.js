@@ -37,7 +37,7 @@ async function main() {
 
 
     console.log("3. Creating researches")
-    transaction = await contract.connect(addr7).addResearch( "Research 1", ethers.parseEther("100"))
+    transaction = await contract.connect(addr7).addResearch("Biology", "Research 1", ethers.parseEther("100"))
     transaction.wait()
     transaction = await contract.connect(addr8).addResearch("Sociology", "Research 2", ethers.parseEther("500"))
     transaction.wait()

@@ -22,7 +22,7 @@ import NotConnected from '@/components/NotConnected/NotConnected'
 import LumiBalance from '@/components/LumiBalance/LumiBalance'
 
 //contract
-import Contract from '../../public//Lumina.json'
+import Contract from '../../../backend/artifacts/contracts/Lumina.sol/Lumina.json'
 
 const Swap = () => {
 

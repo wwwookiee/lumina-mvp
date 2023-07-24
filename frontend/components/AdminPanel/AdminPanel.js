@@ -23,8 +23,8 @@ import { createPublicClient, http, parseAbiItem } from 'viem'
 import { hardhat, goerli } from 'viem/chains'
 
 //contract
-import Contract from '../../public/Lumina.json'
-
+import Contract from '../../../backend/artifacts/contracts/Lumina.sol/Lumina.json'
+import Token from '../../../backend/artifacts/contracts/LuminaToken.sol/LuminaToken.json'
 
 
 

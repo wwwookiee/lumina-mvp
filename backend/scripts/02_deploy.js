@@ -37,34 +37,14 @@ async function main() {
     `Lumina deployed to ${lumina.target}`
   );
 
-  console.log("--------------------------------------------------------------------------");
-
-  // Get the initial LUMI balances of the owner
-  const balance = await lumi.balanceOf(owner.address);
-  console.log("Owner balance (LUMI) : ", balance.toString());
-
-  const contractBalance = await lumi.balanceOf(lumina.target);
-  console.log("LumiSwap contract balance (LUMI) : ", contractBalance.toString());
-
-  console.log("--------------------------------------------------------------------------");
   console.log("Transfering minted LUMI to Lumina contract");
   // Transfer all lumi from owner to the LumiSwap contract
+  const balance = await lumi.balanceOf(owner.address);
   await lumi.transfer(lumina.target, balance);
 
-  //await lumi.approve(lumina.target, balance);
-  console.log("--------------------------------------------------------------------------");
 
-    // Get the  LUMI balances of the owner after transfer
-    const newBalance = await lumi.balanceOf(owner.address);
-    console.log("Owner balance (LUMI) : ", newBalance.toString());
 
-    const newContractBalance = await lumi.balanceOf(lumina.target);
-    console.log("Lumina contract balance (LUMI) : ", newContractBalance.toString());
 
-    console.log("--------------------------------------------------------------------------");
-
-    const ethPrice = await lumina.getLatestPrice();
-    console.log("ETH Price : ", ethPrice.toString());
 
 }
 

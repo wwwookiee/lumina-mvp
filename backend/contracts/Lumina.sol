@@ -125,14 +125,15 @@ contract Lumina is Ownable {
      * @param   _lumiAddress address of the LUMI token contract
      * @dev     This constructor will set the LUMI token contract address and the LUMI to USD rate
      */
-    constructor(address _lumiAddress) {
+    constructor(address _lumiAddress, address _dataFeedAddress) {
         lumi = IERC20(_lumiAddress);
         lumiToUsd = 1;
         /*
         * Goereli ETH/USD address : 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43
+        * mock ETH/USD address : 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
         */
         dataFeed = AggregatorV3Interface(
-            0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43
+            _dataFeedAddress
         );
     }
 
