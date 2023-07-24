@@ -17,7 +17,7 @@ import { readContract } from '@wagmi/core'
 import { useAccount } from 'wagmi'
 
 //contract
-import Contract from '../../../backend/artifacts/contracts/Lumina.sol/Lumina.json'
+import Contract from '../../public/Lumina.json'
 
 const Header = () => {
 
