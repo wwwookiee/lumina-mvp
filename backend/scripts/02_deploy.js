@@ -12,9 +12,9 @@ async function main() {
   console.log(
     `lumi deployed to ${lumi.target}`
   );
-
+  0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e
   // Deploy Lumina.sol with Lumina token address as constructor argument
-  const lumina = await hre.ethers.deployContract("Lumina", [lumi.target, "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43"]);
+  const lumina = await hre.ethers.deployContract("Lumina", [lumi.target, "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e"]);
   await lumina.waitForDeployment();
   console.log(
     `Lumina deployed to ${lumina.target}`
