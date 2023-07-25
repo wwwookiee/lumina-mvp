@@ -20,7 +20,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 // VIEM (events)
 import { createPublicClient, http, parseAbiItem } from 'viem'
-import { hardhat, goerli, polygonMumbai } from 'viem/chains'
+import { hardhat, goerli, polygonMumbai, sepolia } from 'viem/chains'
 
 //contract
 import Contract from '../../public/Lumina.json'
@@ -42,7 +42,7 @@ const AdminPanel = () => {
 
   // events logs
   const client = createPublicClient({
-    chain: polygonMumbai,
+    chain: sepolia,
     transport: http(),
   })
   

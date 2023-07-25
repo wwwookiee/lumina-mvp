@@ -5,6 +5,7 @@ require("solidity-coverage");
 const PK = process.env.PK || ""
 const GOERLI_RPC_URL = process.env.GOERLI_RPC_URL || ""
 const MUMBAI_RPC_URL = process.env.MUMBAI_RPC_URL || ""
+const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || ""
 
 module.exports = {
   defaultNetwork: "hardhat",
@@ -38,6 +39,11 @@ module.exports = {
       url: GOERLI_RPC_URL,
       accounts: [PK],
       chainId: 5
+    },
+    sepolia: {
+      url: SEPOLIA_RPC_URL,
+      accounts: [PK],
+      chainId: 11155111
     },
     mumbai: { 
       url: MUMBAI_RPC_URL,
