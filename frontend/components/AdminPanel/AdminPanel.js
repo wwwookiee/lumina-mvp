@@ -42,7 +42,7 @@ const AdminPanel = () => {
 
   // events logs
   const client = createPublicClient({
-    chain: sepolia,
+    chain: goerli,
     transport: http(),
   })
   
