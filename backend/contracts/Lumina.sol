@@ -170,7 +170,7 @@ contract Lumina is Ownable {
             /*uint timeStamp*/,
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData();
-        return answer / 10**8;
+        return answer / 10 ** 8;
 
     }
 
